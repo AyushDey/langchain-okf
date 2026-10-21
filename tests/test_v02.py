@@ -726,6 +726,54 @@ class TestPersistentIndex:
             "Expected embed_documents to be called again after bundle change"
         )
 
+    def test_incremental_index_sync_embeds_only_delta(
+        self, v02_bundle: Path, tmp_path: Path
+    ):
+        """When Chroma is used, mutating 1 concept embeds ONLY the delta, not the whole bundle."""
+        from langchain_chroma import Chroma
+        from langchain_core.embeddings import Embeddings
+
+        embed_calls: list[int] = []
+
+        class CountingEmbeddings(Embeddings):
+            def embed_documents(self, texts):
+                embed_calls.append(len(texts))
+                return [[0.1] * 128 for _ in texts]
+
+            def embed_query(self, text):
+                return [0.1] * 128
+
+        persist_dir = tmp_path / "chroma_inc"
+        # 1. First build (cold) -> embeds all initial concepts
+        OKFRetriever.from_bundle(
+            v02_bundle,
+            embeddings=CountingEmbeddings(),
+            vectorstore_cls=Chroma,
+            persist_directory=persist_dir,
+            filter_status=None,
+        )
+        total_initial = embed_calls[0]
+        assert total_initial > 1
+
+        # 2. Add 1 new concept
+        (v02_bundle / "metrics" / "delta_metric.md").write_text(
+            "---\ntype: Metric\ntitle: Delta\ndescription: Delta test.\n---\nDelta body.\n",
+            encoding="utf-8",
+        )
+
+        # 3. Second build -> should ONLY embed the 1 new document (delta = 1)
+        OKFRetriever.from_bundle(
+            v02_bundle,
+            embeddings=CountingEmbeddings(),
+            vectorstore_cls=Chroma,
+            persist_directory=persist_dir,
+            filter_status=None,
+        )
+        assert len(embed_calls) == 2
+        assert embed_calls[1] == 1, (
+            f"Expected only 1 new document to be embedded on incremental update, got {embed_calls[1]}"
+        )
+
 
 # ── Sub-second agent memory operations: write and verify ─────────────────────
 

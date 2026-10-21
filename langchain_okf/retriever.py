@@ -30,7 +30,9 @@ Example — subsequent calls load in milliseconds from the persisted index:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -64,6 +66,13 @@ def _bundle_content_hash(bundle_path: Path) -> str:
         stat = md_file.stat()
         h.update(f"{md_file}:{stat.st_size}:{stat.st_mtime_ns}\n".encode())
     return h.hexdigest()
+
+
+def _concept_content_hash(doc: Document) -> str:
+    """SHA-256 fingerprint of a concept document's content and metadata."""
+    meta_items = sorted((str(k), str(v)) for k, v in doc.metadata.items())
+    payload = f"{doc.page_content}:{meta_items}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _is_stale(metadata: dict, now: datetime) -> bool:
@@ -190,6 +199,7 @@ class OKFRetriever(BaseRetriever):
             persist_dir = Path(persist_directory)
             persist_dir.mkdir(parents=True, exist_ok=True)
             hash_file = persist_dir / ".okf_index_hash"
+            manifest_file = persist_dir / ".okf_manifest.json"
 
             current_hash = _bundle_content_hash(bundle_path)
             stored_hash = hash_file.read_text().strip() if hash_file.exists() else ""
@@ -197,7 +207,10 @@ class OKFRetriever(BaseRetriever):
             has_existing = (
                 hash_file.exists()
                 and stored_hash == current_hash
-                and any(p.name != ".okf_index_hash" for p in persist_dir.iterdir())
+                and any(
+                    p.name not in (".okf_index_hash", ".okf_manifest.json")
+                    for p in persist_dir.iterdir()
+                )
             )
 
             if has_existing:
@@ -214,16 +227,98 @@ class OKFRetriever(BaseRetriever):
                         **vs_kwargs,
                     )
             else:
-                # Build and persist
+                # Check for incremental update opportunity
+                stored_manifest: dict[str, str] = {}
+                if manifest_file.exists():
+                    try:
+                        stored_manifest = json.loads(
+                            manifest_file.read_text(encoding="utf-8")
+                        )
+                    except Exception:
+                        stored_manifest = {}
+
                 loader = OKFBundleLoader(bundle_path)
                 docs = loader.load()
-                vectorstore = vs_cls.from_documents(
-                    docs,
-                    embedding=embeddings,
-                    persist_directory=str(persist_dir),
-                    **vs_kwargs,
+                current_manifest = {
+                    d.metadata.get("concept_id", ""): _concept_content_hash(d)
+                    for d in docs
+                    if d.metadata.get("concept_id")
+                }
+
+                can_incremental = bool(stored_manifest) and any(
+                    p.name not in (".okf_index_hash", ".okf_manifest.json")
+                    for p in persist_dir.iterdir()
                 )
-                hash_file.write_text(current_hash)
+
+                synced_incrementally = False
+                if can_incremental:
+                    try:
+                        try:
+                            vectorstore = vs_cls(
+                                embedding_function=embeddings,
+                                persist_directory=str(persist_dir),
+                                **vs_kwargs,
+                            )
+                        except TypeError:
+                            vectorstore = vs_cls(
+                                persist_directory=str(persist_dir),
+                                **vs_kwargs,
+                            )
+
+                        if hasattr(vectorstore, "add_documents"):
+                            # Determine delta
+                            new_or_modified_docs = [
+                                d
+                                for d in docs
+                                if current_manifest.get(
+                                    str(d.metadata.get("concept_id", ""))
+                                )
+                                != stored_manifest.get(
+                                    str(d.metadata.get("concept_id", ""))
+                                )
+                            ]
+                            deleted_ids = [
+                                cid
+                                for cid in stored_manifest
+                                if cid not in current_manifest
+                            ]
+                            to_delete = deleted_ids + [
+                                d.metadata["concept_id"]
+                                for d in new_or_modified_docs
+                                if d.metadata.get("concept_id") in stored_manifest
+                            ]
+
+                            if to_delete and hasattr(vectorstore, "delete"):
+                                with contextlib.suppress(Exception):
+                                    vectorstore.delete(ids=to_delete)
+
+                            if new_or_modified_docs:
+                                ids = [
+                                    d.metadata.get("concept_id", "")
+                                    for d in new_or_modified_docs
+                                ]
+                                vectorstore.add_documents(new_or_modified_docs, ids=ids)
+
+                            manifest_file.write_text(
+                                json.dumps(current_manifest, indent=2), encoding="utf-8"
+                            )
+                            hash_file.write_text(current_hash)
+                            synced_incrementally = True
+                    except Exception:
+                        synced_incrementally = False
+
+                if not synced_incrementally:
+                    # Full cold build and persist
+                    vectorstore = vs_cls.from_documents(
+                        docs,
+                        embedding=embeddings,
+                        persist_directory=str(persist_dir),
+                        **vs_kwargs,
+                    )
+                    manifest_file.write_text(
+                        json.dumps(current_manifest, indent=2), encoding="utf-8"
+                    )
+                    hash_file.write_text(current_hash)
         else:
             # In-memory (no persistence)
             loader = OKFBundleLoader(bundle_path)
