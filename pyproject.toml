@@ -1,0 +1,174 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-okf"
+version = "0.2.0"
+description = "LangChain integration for Google's Open Knowledge Format (OKF)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Ayush Dey" }]
+keywords = [
+    "langchain",
+    "okf",
+    "open-knowledge-format",
+    "knowledge-base",
+    "rag",
+    "knowledge-graph",
+    "retrieval-augmented-generation",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "langchain-chroma>=1.1.0",
+    "langchain-core>=1.0.0",
+    "langchain-ollama>=1.1.0",
+    "langchain-text-splitters>=1.1.2",
+    "pypdf>=6.21.1",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# ── Embedding providers (pick one or more) ──
+openai = ["langchain-openai>=0.3.0"]
+ollama = ["langchain-ollama>=0.3.0"]
+openrouter = ["langchain-openrouter>=0.2.0"]
+
+# ── Vector stores (pick one or more) ──
+chroma = ["langchain-chroma>=0.2.0"]
+pgvector = ["langchain-postgres>=0.0.12"]
+pinecone = ["langchain-pinecone>=0.2.0"]
+qdrant = ["langchain-qdrant>=0.2.0"]
+faiss = ["faiss-cpu>=1.7.0"]
+milvus = ["langchain-milvus>=0.2.0"]
+
+# ── Source file loaders (for OKFBundleGenerator) ──
+# Docling (MIT) is the recommended extraction backend.
+# pymupdf (AGPL) and pypdf (BSD) are fallback options.
+loaders = [
+    "docling>=2.100.0",
+]
+loaders-legacy = [
+    "langchain-community>=0.4.0",
+    "pymupdf>=1.24.0",
+    "pypdf>=4.0",
+    "beautifulsoup4>=4.12",
+    "docx2txt>=0.8",
+]
+
+# ── Agent framework & RAG ──
+agent = [
+    "langchain>=1.0.0",
+    "langchain-text-splitters>=0.3.0",
+]
+
+# ── Common combos ──
+vectorstore = [
+    "langchain-chroma>=0.2.0",
+    "langchain-openai>=0.3.0",
+]
+
+# ── Everything ──
+all = [
+    # Embeddings
+    "langchain-openai>=0.3.0",
+    "langchain-ollama>=0.3.0",
+    "langchain-openrouter>=0.2.0",
+    # Vector stores
+    "langchain-chroma>=0.2.0",
+    "langchain-postgres>=0.0.12",
+    "langchain-pinecone>=0.2.0",
+    "langchain-qdrant>=0.2.0",
+    "faiss-cpu>=1.7.0",
+    "langchain-milvus>=0.2.0",
+    # Loaders
+    "docling>=2.100.0",
+    # Agent framework
+    "langchain>=1.0.0",
+    "langchain-text-splitters>=0.3.0",
+]
+
+# ── Development ──
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4.0",
+    "mypy>=1.10",
+    "langchain-ollama>=0.3.0",
+    "langchain-chroma>=0.2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/AyushDey/langchain-okf"
+Documentation = "https://github.com/AyushDey/langchain-okf#readme"
+Changelog = "https://github.com/AyushDey/langchain-okf/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/AyushDey/langchain-okf/issues"
+
+# ── Build configuration ──
+
+[tool.hatch.build.targets.wheel]
+packages = ["langchain_okf"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "langchain_okf/",
+    "tests/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "pyproject.toml",
+]
+
+# ── uv configuration ──
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4.0",
+    "mypy>=1.10",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+# ── Tool configuration ──
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "docling.*",
+    "docling_core.*",
+    "fitz.*",
+    "PIL.*",
+    "langchain_community.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
