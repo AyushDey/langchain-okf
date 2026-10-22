@@ -268,24 +268,16 @@ uv run python benchmarks/run_benchmark_lmstudio.py report.pdf --live-llm
 
 ---
 
-## Contributing & Publishing
+## Development & Testing
 
-1. **Test Suite**:
-   ```bash
-   uv sync
-   uv run pytest tests/ -v
-   uv run ruff check langchain_okf/
-   uv run mypy langchain_okf/
-   ```
+To run tests and linters locally:
 
-2. **Publishing to PyPI**:
-   ```bash
-   uv build
-   uv publish --token <your-pypi-token>
-   ```
-
-3. **LangChain Ecosystem Listing**:
-   File an Integration Listing Issue on [LangChain Docs](https://github.com/langchain-ai/docs/issues/new?template=06-integration-submission.yml) with component `retrievers` and `tools`.
+```bash
+uv sync
+uv run pytest tests/ -v
+uv run ruff check langchain_okf/
+uv run mypy langchain_okf/
+```
 
 ---
 
