@@ -846,3 +846,100 @@ class TestAgentMemoryOperations:
         # Verify read reflects new tier
         read_verified = tools["okf_read_concept"]._run("playbooks/deploy_guide")
         assert "[✓ human-reviewed]" in read_verified
+
+    @pytest.mark.asyncio
+    async def test_toolkit_async_write_and_verify(self, v02_bundle: Path):
+        """Async _arun on write and verify tools completes without error."""
+        toolkit = OKFToolkit.from_bundle(v02_bundle)
+        tools = {t.name: t for t in toolkit.get_tools(include_write=True)}
+
+        write_res = await tools["okf_write_concept"]._arun(
+            concept_id="rules/async_rule",
+            type="Rule",
+            body="Async memory body.",
+            title="Async Rule",
+        )
+        assert "Successfully saved" in write_res
+
+        verify_res = await tools["okf_verify_concept"]._arun(
+            concept_id="rules/async_rule",
+            actor="agent/async-bot",
+        )
+        assert "verified by 'agent/async-bot'" in verify_res
+
+
+class TestOverFetchingAndCaching:
+    def test_concept_cross_links_caching(self):
+        concept = OKFConcept(
+            concept_id="metrics/dau",
+            body="Links to [WAU](/metrics/wau.md) and [MAU](/metrics/mau.md).",
+        )
+        assert concept._cached_links is None
+        links = concept.cross_links()
+        assert links == ["metrics/wau", "metrics/mau"]
+        assert concept._cached_links == ["metrics/wau", "metrics/mau"]
+        # Second call returns cached list
+        assert concept.cross_links() is links
+
+    def test_retriever_over_fetching_prevents_starvation(self, tmp_path: Path):
+        from langchain_core.documents import Document
+        from langchain_core.vectorstores import VectorStore
+
+        from langchain_okf.graph import OKFKnowledgeGraph
+
+        # Create dummy documents: 3 draft documents (scored highest) and 3 stable documents
+        class MockVectorStore(VectorStore):
+            def __init__(self, docs: list[Document]):
+                self.docs = docs
+
+            def similarity_search(
+                self, query: str, k: int = 4, **kwargs
+            ) -> list[Document]:
+                return self.docs[:k]
+
+            def add_texts(self, texts, metadatas=None, **kwargs):
+                return []
+
+            @classmethod
+            def from_texts(cls, texts, embedding, metadatas=None, **kwargs):
+                return cls([])
+
+        docs = [
+            Document(
+                page_content="Draft 1", metadata={"concept_id": "c1", "status": "draft"}
+            ),
+            Document(
+                page_content="Draft 2", metadata={"concept_id": "c2", "status": "draft"}
+            ),
+            Document(
+                page_content="Draft 3", metadata={"concept_id": "c3", "status": "draft"}
+            ),
+            Document(
+                page_content="Stable 1",
+                metadata={"concept_id": "c4", "status": "stable"},
+            ),
+            Document(
+                page_content="Stable 2",
+                metadata={"concept_id": "c5", "status": "stable"},
+            ),
+            Document(
+                page_content="Stable 3",
+                metadata={"concept_id": "c6", "status": "stable"},
+            ),
+        ]
+        vs = MockVectorStore(docs)
+        graph = OKFKnowledgeGraph([])
+        retriever = OKFRetriever(
+            vectorstore=vs,
+            graph=graph,
+            k=2,
+            expand_depth=0,
+            filter_status="stable",
+        )
+        # Because filter_status='stable' triggers over-fetching (fetch_k=20),
+        # similarity_search receives k=20 and returns all 6 docs,
+        # then filters to the 3 stable docs, and takes the top k=2.
+        results = retriever.invoke("test")
+        assert len(results) == 2
+        assert results[0].metadata["concept_id"] == "c4"
+        assert results[1].metadata["concept_id"] == "c5"

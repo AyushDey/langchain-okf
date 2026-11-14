@@ -427,6 +427,16 @@ class OKFRetriever(BaseRetriever):
             metadata["generated_at"] = concept.generated_at
         return Document(page_content=concept.body, metadata=metadata)
 
+    def _has_post_filters(self) -> bool:
+        """Check if any post-filters beyond the vector store filter are active."""
+        return bool(
+            self.filter_tags
+            or self.filter_status
+            or self.exclude_stale
+            or self.min_trust_tier != "unverified"
+            or (self.filter_types and len(self.filter_types) > 1)
+        )
+
     def _get_relevant_documents(
         self,
         query: str,
@@ -440,6 +450,8 @@ class OKFRetriever(BaseRetriever):
         3. Expand results via cross-link graph traversal.
         """
         params = self._get_retrieve_params()
+        if self._has_post_filters():
+            params["k"] = max(self.k * 3, 20)
 
         if self.score_threshold is not None:
             scored = self.vectorstore.similarity_search_with_relevance_scores(
@@ -449,9 +461,9 @@ class OKFRetriever(BaseRetriever):
         else:
             docs = self.vectorstore.similarity_search(query, **params)
 
-        docs = [d for d in docs if self._passes_filters(d)]
-        docs = self._expand_with_graph(docs)
-        return docs
+        filtered = [d for d in docs if self._passes_filters(d)]
+        base_docs = filtered[: self.k]
+        return self._expand_with_graph(base_docs)
 
     async def _aget_relevant_documents(
         self,
@@ -461,6 +473,8 @@ class OKFRetriever(BaseRetriever):
     ) -> list[Document]:
         """Async variant of _get_relevant_documents."""
         params = self._get_retrieve_params()
+        if self._has_post_filters():
+            params["k"] = max(self.k * 3, 20)
 
         if self.score_threshold is not None:
             scored = await self.vectorstore.asimilarity_search_with_relevance_scores(
@@ -470,6 +484,6 @@ class OKFRetriever(BaseRetriever):
         else:
             docs = await self.vectorstore.asimilarity_search(query, **params)
 
-        docs = [d for d in docs if self._passes_filters(d)]
-        docs = self._expand_with_graph(docs)
-        return docs
+        filtered = [d for d in docs if self._passes_filters(d)]
+        base_docs = filtered[: self.k]
+        return self._expand_with_graph(base_docs)

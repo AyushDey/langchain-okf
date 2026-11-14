@@ -24,6 +24,8 @@ Example:
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,6 +36,8 @@ from pydantic import ConfigDict
 
 from langchain_okf._parser import OKFConcept, parse_frontmatter
 from langchain_okf.graph import OKFKnowledgeGraph
+
+_write_lock = threading.RLock()
 
 
 def _trust_badge(concept: OKFConcept) -> str:
@@ -383,85 +387,93 @@ class OKFWriteConceptTool(BaseTool):
         if not type:
             return "Error: concept type is required per OKF §4.1."
 
-        file_path = self.bundle_path / f"{cid}.md"
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with _write_lock:
+            file_path = self.bundle_path / f"{cid}.md"
+            file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Load existing frontmatter if updating
-        existing_fm: dict[str, Any] = {}
-        if file_path.exists():
-            try:
-                existing_fm, _ = parse_frontmatter(
-                    file_path.read_text(encoding="utf-8")
+            # Load existing frontmatter if updating
+            existing_fm: dict[str, Any] = {}
+            if file_path.exists():
+                try:
+                    existing_fm, _ = parse_frontmatter(
+                        file_path.read_text(encoding="utf-8")
+                    )
+                except Exception:
+                    existing_fm = {}
+
+            tag_list = (
+                [t.strip() for t in tags.split(",") if t.strip()]
+                if tags
+                else existing_fm.get("tags", [])
+            )
+
+            frontmatter: dict[str, Any] = {
+                "type": type.strip(),
+                "title": title.strip()
+                or existing_fm.get("title")
+                or cid.split("/")[-1],
+                "description": description.strip()
+                or existing_fm.get("description", ""),
+            }
+            if tag_list:
+                frontmatter["tags"] = tag_list
+
+            frontmatter["status"] = existing_fm.get("status", "stable")
+            frontmatter["generated"] = {
+                "by": self.actor,
+                "at": now,
+            }
+            if "verified" in existing_fm:
+                frontmatter["verified"] = existing_fm["verified"]
+            if "stale_after" in existing_fm:
+                frontmatter["stale_after"] = existing_fm["stale_after"]
+            if "sources" in existing_fm:
+                frontmatter["sources"] = existing_fm["sources"]
+
+            fm_text = yaml.safe_dump(
+                frontmatter, sort_keys=False, allow_unicode=True
+            ).rstrip()
+            file_content = f"---\n{fm_text}\n---\n\n{body.strip()}\n"
+            file_path.write_text(file_content, encoding="utf-8")
+
+            # Update knowledge graph in-memory immediately (< 1ms)
+            concept = OKFConcept(
+                concept_id=cid,
+                frontmatter=frontmatter,
+                body=body.strip(),
+                source_path=str(file_path),
+            )
+            self.graph._concepts[cid] = concept
+            self.graph._concept_id_set.add(cid)
+            if cid not in self.graph._types[type.strip()]:
+                self.graph._types[type.strip()].append(cid)
+            for t in tag_list:
+                if cid not in self.graph._tags[t]:
+                    self.graph._tags[t].append(cid)
+            self.graph._forward[cid] = [
+                target
+                for target in concept.cross_links()
+                if target in self.graph._concepts
+            ]
+
+            # Log change to log.md
+            log_path = self.bundle_path / "log.md"
+            date_str = now[:10]
+            log_entry = (
+                f"\n## {date_str}\n* **Update**: Saved concept `{cid}` "
+                f"[{type}] by `{self.actor}`.\n"
+            )
+            if log_path.exists():
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(log_entry)
+            else:
+                log_path.write_text(
+                    "# Bundle Update Log\n" + log_entry, encoding="utf-8"
                 )
-            except Exception:
-                existing_fm = {}
 
-        tag_list = (
-            [t.strip() for t in tags.split(",") if t.strip()]
-            if tags
-            else existing_fm.get("tags", [])
-        )
-
-        frontmatter: dict[str, Any] = {
-            "type": type.strip(),
-            "title": title.strip() or existing_fm.get("title") or cid.split("/")[-1],
-            "description": description.strip() or existing_fm.get("description", ""),
-        }
-        if tag_list:
-            frontmatter["tags"] = tag_list
-
-        frontmatter["status"] = existing_fm.get("status", "stable")
-        frontmatter["generated"] = {
-            "by": self.actor,
-            "at": now,
-        }
-        if "verified" in existing_fm:
-            frontmatter["verified"] = existing_fm["verified"]
-        if "stale_after" in existing_fm:
-            frontmatter["stale_after"] = existing_fm["stale_after"]
-        if "sources" in existing_fm:
-            frontmatter["sources"] = existing_fm["sources"]
-
-        fm_text = yaml.safe_dump(
-            frontmatter, sort_keys=False, allow_unicode=True
-        ).rstrip()
-        file_content = f"---\n{fm_text}\n---\n\n{body.strip()}\n"
-        file_path.write_text(file_content, encoding="utf-8")
-
-        # Update knowledge graph in-memory immediately (< 1ms)
-        concept = OKFConcept(
-            concept_id=cid,
-            frontmatter=frontmatter,
-            body=body.strip(),
-            source_path=str(file_path),
-        )
-        self.graph._concepts[cid] = concept
-        self.graph._concept_id_set.add(cid)
-        if cid not in self.graph._types[type.strip()]:
-            self.graph._types[type.strip()].append(cid)
-        for t in tag_list:
-            if cid not in self.graph._tags[t]:
-                self.graph._tags[t].append(cid)
-        self.graph._forward[cid] = [
-            target for target in concept.cross_links() if target in self.graph._concepts
-        ]
-
-        # Log change to log.md
-        log_path = self.bundle_path / "log.md"
-        date_str = now[:10]
-        log_entry = (
-            f"\n## {date_str}\n* **Update**: Saved concept `{cid}` "
-            f"[{type}] by `{self.actor}`.\n"
-        )
-        if log_path.exists():
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write(log_entry)
-        else:
-            log_path.write_text("# Bundle Update Log\n" + log_entry, encoding="utf-8")
-
-        return f"Successfully saved concept '{cid}' [{type}]."
+            return f"Successfully saved concept '{cid}' [{type}]."
 
     async def _arun(
         self,
@@ -472,7 +484,9 @@ class OKFWriteConceptTool(BaseTool):
         description: str = "",
         tags: str = "",
     ) -> str:
-        return self._run(concept_id, type, body, title, description, tags)
+        return await asyncio.to_thread(
+            self._run, concept_id, type, body, title, description, tags
+        )
 
 
 class OKFVerifyConceptTool(BaseTool):
@@ -494,47 +508,48 @@ class OKFVerifyConceptTool(BaseTool):
 
     def _run(self, concept_id: str, actor: str = "") -> str:
         cid = concept_id.strip().strip("/")
-        file_path = self.bundle_path / f"{cid}.md"
-        if not file_path.exists():
-            return f"Error: Concept '{cid}' not found at {file_path}."
+        with _write_lock:
+            file_path = self.bundle_path / f"{cid}.md"
+            if not file_path.exists():
+                return f"Error: Concept '{cid}' not found at {file_path}."
 
-        verifier = actor.strip() or self.default_actor
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            verifier = actor.strip() or self.default_actor
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        try:
-            fm, body = parse_frontmatter(file_path.read_text(encoding="utf-8"))
-        except Exception as e:
-            return f"Error reading concept '{cid}': {e}"
+            try:
+                fm, body = parse_frontmatter(file_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                return f"Error reading concept '{cid}': {e}"
 
-        verified = fm.get("verified", [])
-        if isinstance(verified, dict):
-            verified = [verified]
-        elif not isinstance(verified, list):
-            verified = []
+            verified = fm.get("verified", [])
+            if isinstance(verified, dict):
+                verified = [verified]
+            elif not isinstance(verified, list):
+                verified = []
 
-        verified.append({"by": verifier, "at": now})
-        fm["verified"] = verified
+            verified.append({"by": verifier, "at": now})
+            fm["verified"] = verified
 
-        fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).rstrip()
-        file_content = f"---\n{fm_text}\n---\n\n{body}\n"
-        file_path.write_text(file_content, encoding="utf-8")
+            fm_text = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).rstrip()
+            file_content = f"---\n{fm_text}\n---\n\n{body}\n"
+            file_path.write_text(file_content, encoding="utf-8")
 
-        # Reload concept in graph
-        concept = OKFConcept(
-            concept_id=cid,
-            frontmatter=fm,
-            body=body,
-            source_path=str(file_path),
-        )
-        self.graph._concepts[cid] = concept
+            # Reload concept in graph
+            concept = OKFConcept(
+                concept_id=cid,
+                frontmatter=fm,
+                body=body,
+                source_path=str(file_path),
+            )
+            self.graph._concepts[cid] = concept
 
-        return (
-            f"Concept '{cid}' verified by '{verifier}'. "
-            f"New trust tier: '{concept.trust_tier}'."
-        )
+            return (
+                f"Concept '{cid}' verified by '{verifier}'. "
+                f"New trust tier: '{concept.trust_tier}'."
+            )
 
     async def _arun(self, concept_id: str, actor: str = "") -> str:
-        return self._run(concept_id, actor)
+        return await asyncio.to_thread(self._run, concept_id, actor)
 
 
 class OKFToolkit:
