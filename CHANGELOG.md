@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0 (2026-11-14)
+
 ### Added
+- Dependency pruning: pruned unused dependencies (`langchain-ollama`, `langchain-text-splitters`) from core dependencies, made `langchain-chroma` optional, and kept core lean (`langchain-core`, `pypdf`, `pyyaml`).
+- Over-fetching in `OKFRetriever`: dynamically scales candidate pool when post-filters (`trust_tier`, `stale_after`, `status`, `tags`) are active to prevent result starvation.
+- Thread-safe and non-blocking agent memory tools: `OKFWriteConceptTool` and `OKFVerifyConceptTool` wrapped in reentrant write locks and native async `_arun` implementations via `asyncio.to_thread`.
+- In-memory cross-link caching: `OKFConcept.cross_links()` caches parsed markdown references to eliminate repeated regex scans across graph hops.
+- Automated CI/CD workflows: GitHub Actions for multi-python testing matrix (3.10–3.13) and OIDC Trusted Publishing to PyPI.
 - Millisecond-level reruns via caching: `OKFBundleGenerator` hashes content chunks (SHA-256) and caches LLM results in `.okf_cache.json` in the bundle directory. If chunks or images are unchanged, extraction runs in milliseconds and uses 0 LLM API calls.
 - Parallel LLM extraction: `OKFBundleGenerator` executes LLM calls concurrently using thread pools (controlled via `max_concurrency`, default `4`) to speed up first-run extraction.
 - Decorative image filtering: `OKFBundleGenerator` automatically skips analyzing decorative graphics, logos, banners, headers, and footers to save API costs and processing time. Uses a combination of size/aspect-ratio heuristics and multimodal LLM classification.
