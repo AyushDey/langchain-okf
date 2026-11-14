@@ -1,0 +1,59 @@
+name: Release & Publish
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Semantic Release & PyPI Publish
+    runs-on: ubuntu-latest
+    concurrency: release
+    # Do not trigger on release commits produced by the release automation
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Configure Git Identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine & Apply Semantic Release
+        id: semver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Calculate the next version if releasable conventional commits exist
+          NEXT_VER=$(uvx --from "python-semantic-release>=9.0.0" semantic-release version --print || true)
+          echo "next_version=$NEXT_VER" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$NEXT_VER" ]; then
+            echo "Applying release for v$NEXT_VER..."
+            uvx --from "python-semantic-release>=9.0.0" semantic-release version
+            uvx --from "python-semantic-release>=9.0.0" semantic-release publish
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No releasable commits detected. Skipping release."
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to PyPI
+        if: steps.semver.outputs.released == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
