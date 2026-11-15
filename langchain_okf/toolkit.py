@@ -621,19 +621,31 @@ class OKFToolkit:
             OKFRelatedConceptsTool(graph=self.graph),
             OKFSearchTool(graph=self.graph),
         ]
-        if include_write and self.bundle_path is not None:
-            tools.extend(
-                [
-                    OKFWriteConceptTool(
-                        graph=self.graph,
-                        bundle_path=self.bundle_path,
-                        actor=self.actor,
-                    ),
-                    OKFVerifyConceptTool(
-                        graph=self.graph,
-                        bundle_path=self.bundle_path,
-                        default_actor=self.actor,
-                    ),
-                ]
-            )
+        if include_write:
+            if self.bundle_path is None:
+                import warnings
+
+                warnings.warn(
+                    "include_write=True was requested, but bundle_path is None. "
+                    "Write tools (OKFWriteConceptTool, OKFVerifyConceptTool) require "
+                    "a bundle directory to persist concepts and were not added. "
+                    "Use OKFToolkit.from_bundle(path) or pass bundle_path to OKFToolkit().",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                tools.extend(
+                    [
+                        OKFWriteConceptTool(
+                            graph=self.graph,
+                            bundle_path=self.bundle_path,
+                            actor=self.actor,
+                        ),
+                        OKFVerifyConceptTool(
+                            graph=self.graph,
+                            bundle_path=self.bundle_path,
+                            default_actor=self.actor,
+                        ),
+                    ]
+                )
         return tools

@@ -187,7 +187,8 @@ class OKFRetriever(BaseRetriever):
             except ImportError as err:
                 raise ImportError(
                     "No vector store class provided and langchain-chroma is "
-                    "not installed. Install it with: pip install langchain-chroma"
+                    "not installed. Install it with: pip install 'langchain-okf[chroma]' "
+                    "(or supply a custom vectorstore_cls)."
                 ) from err
 
         vs_kwargs = dict(vectorstore_kwargs or {})
@@ -442,6 +443,7 @@ class OKFRetriever(BaseRetriever):
         query: str,
         *,
         run_manager: CallbackManagerForRetrieverRun,
+        **kwargs: Any,
     ) -> list[Document]:
         """Retrieve documents relevant to the query.
 
@@ -449,9 +451,12 @@ class OKFRetriever(BaseRetriever):
         2. Filter by type / tags / status / trust / staleness.
         3. Expand results via cross-link graph traversal.
         """
+        effective_k = kwargs.get("k", self.k)
         params = self._get_retrieve_params()
         if self._has_post_filters():
-            params["k"] = max(self.k * 3, 20)
+            params["k"] = max(effective_k * 3, 20)
+        elif "k" in kwargs:
+            params["k"] = effective_k
 
         if self.score_threshold is not None:
             scored = self.vectorstore.similarity_search_with_relevance_scores(
@@ -462,7 +467,7 @@ class OKFRetriever(BaseRetriever):
             docs = self.vectorstore.similarity_search(query, **params)
 
         filtered = [d for d in docs if self._passes_filters(d)]
-        base_docs = filtered[: self.k]
+        base_docs = filtered[:effective_k]
         return self._expand_with_graph(base_docs)
 
     async def _aget_relevant_documents(
@@ -470,11 +475,15 @@ class OKFRetriever(BaseRetriever):
         query: str,
         *,
         run_manager: AsyncCallbackManagerForRetrieverRun,
+        **kwargs: Any,
     ) -> list[Document]:
         """Async variant of _get_relevant_documents."""
+        effective_k = kwargs.get("k", self.k)
         params = self._get_retrieve_params()
         if self._has_post_filters():
-            params["k"] = max(self.k * 3, 20)
+            params["k"] = max(effective_k * 3, 20)
+        elif "k" in kwargs:
+            params["k"] = effective_k
 
         if self.score_threshold is not None:
             scored = await self.vectorstore.asimilarity_search_with_relevance_scores(
@@ -485,5 +494,5 @@ class OKFRetriever(BaseRetriever):
             docs = await self.vectorstore.asimilarity_search(query, **params)
 
         filtered = [d for d in docs if self._passes_filters(d)]
-        base_docs = filtered[: self.k]
+        base_docs = filtered[:effective_k]
         return self._expand_with_graph(base_docs)

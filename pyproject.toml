@@ -140,6 +140,7 @@ dev = [
     "types-pyyaml>=6.0.12.20260906",
     "langchain-chroma>=0.2.0",
     "langchain-ollama>=0.2.0",
+    "langchain-tests>=1.1.9",
 ]
 
 # ── Tool configuration ──
