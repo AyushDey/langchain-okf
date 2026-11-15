@@ -2,6 +2,54 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-11-15)
+
+### Bug Fixes
+
+- Update checkout action ref to use branch and ref_name for release workflow
+  ([`c6daa1d`](https://github.com/AyushDey/langchain-okf/commit/c6daa1dc8b54b257b0189cc40d309046af9553a5))
+
+### Chores
+
+- **scripts**: Allow 'v'-prefixed version headings in release_check.py [skip ci]
+  ([`98c4a2b`](https://github.com/AyushDey/langchain-okf/commit/98c4a2bfe61c5cad05f6554757d7ac653242603b))
+
+### Continuous Integration
+
+- **release**: Add workflow_dispatch option to publish historical v0.1.0 via OIDC [skip ci]
+  ([`18c51d3`](https://github.com/AyushDey/langchain-okf/commit/18c51d32ccb5489d01e94777fa8e38158ff1a906))
+
+- **release**: Fetch tags and configure checkout branch for workflow run
+  ([`a0bcb84`](https://github.com/AyushDey/langchain-okf/commit/a0bcb84971abf1a7d085fdc6398f35f11b3ef2d1))
+
+- **release**: Gate release and publish on CI completion and test suite success [skip ci]
+  ([`aec005b`](https://github.com/AyushDey/langchain-okf/commit/aec005b24b4c5052161fb533b55d737a14235d61))
+
+- **release**: Revert historical release overrides and enforce changelog as release source of truth
+  [skip ci]
+  ([`8829c16`](https://github.com/AyushDey/langchain-okf/commit/8829c16a9899d7a7f1864c544ad1dbf9a783a939))
+
+### Documentation
+
+- **changelog**: Merge duplicate 0.2.0 sections and unify changelog history [skip ci]
+  ([`4250939`](https://github.com/AyushDey/langchain-okf/commit/4250939852aa1dce6175a9c0ddc85ecb3abc8060))
+
+- **readme**: Add logo parameter to PyPI badge to refresh GitHub Camo cache [skip ci]
+  ([`1313b42`](https://github.com/AyushDey/langchain-okf/commit/1313b4270e25a80d147dbf48c535b2a88812001d))
+
+- **readme**: Elaborate architecture, fix toolkit API signature, and consolidate performance metrics
+  [skip ci]
+  ([`626bc64`](https://github.com/AyushDey/langchain-okf/commit/626bc648db2ecfdb7822f795459a12f95463e043))
+
+- **readme**: Replace LaTeX delimiters with clean GFM code spans for universal rendering [skip ci]
+  ([`e193afe`](https://github.com/AyushDey/langchain-okf/commit/e193afe9e82591cdace3310fe256d22fdff82d47))
+
+### Features
+
+- **testing**: Add langchain-tests compliance suite and dynamic retriever k parameter [skip ci]
+  ([`1390608`](https://github.com/AyushDey/langchain-okf/commit/1390608a2210a134def8341ee745b65d1f1f69b4))
+
+
 ## v0.2.1 (2026-11-15)
 
 ### Bug Fixes
