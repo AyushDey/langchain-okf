@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      publish_historical_010:
+        description: 'Build and publish historical v0.1.0 release'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: release
     # Do not trigger on release commits produced by the release automation
-    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    if: "github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):')"
     permissions:
       contents: write
       issues: write
@@ -44,18 +50,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          uvx --from "python-semantic-release>=9.0.0" semantic-release version
-          NEW_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          if [ -n "$NEW_TAG" ] && [ "$NEW_TAG" != "$PREV_TAG" ]; then
-            echo "New release detected: $NEW_TAG"
-            uvx --from "python-semantic-release>=9.0.0" semantic-release publish
+          if [ "${{ github.event.inputs.publish_historical_010 }}" = "true" ]; then
+            echo "Manual historical release of v0.1.0 requested."
+            git checkout v0.1.0
+            python3 -c '
+          with open("pyproject.toml") as f:
+              c = f.read()
+          c = c.replace("version = \"0.2.0\"", "version = \"0.1.0\"", 1)
+          with open("pyproject.toml", "w") as f:
+              f.write(c)
+          '
             echo "released=true" >> "$GITHUB_OUTPUT"
-            echo "version=${NEW_TAG#v}" >> "$GITHUB_OUTPUT"
+            echo "version=0.1.0" >> "$GITHUB_OUTPUT"
           else
-            echo "No new release produced."
-            echo "released=false" >> "$GITHUB_OUTPUT"
+            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            uvx --from "python-semantic-release>=9.0.0" semantic-release version
+            NEW_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+            if [ -n "$NEW_TAG" ] && [ "$NEW_TAG" != "$PREV_TAG" ]; then
+              echo "New release detected: $NEW_TAG"
+              uvx --from "python-semantic-release>=9.0.0" semantic-release publish
+              echo "released=true" >> "$GITHUB_OUTPUT"
+              echo "version=${NEW_TAG#v}" >> "$GITHUB_OUTPUT"
+            else
+              echo "No new release produced."
+              echo "released=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Build distribution packages
