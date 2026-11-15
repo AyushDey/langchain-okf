@@ -10,12 +10,16 @@ Verifies:
 7. Real historical commit 1390608 evaluates to LevelBump.PATCH.
 """
 
+# ruff: noqa: E402
 from __future__ import annotations
 
 from typing import cast
 
-import git
 import pytest
+
+git = pytest.importorskip("git")
+pytest.importorskip("semantic_release")
+
 from semantic_release.commit_parser.conventional.options import (
     ConventionalCommitParserOptions,
 )
