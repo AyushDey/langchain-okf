@@ -31,6 +31,9 @@ Every commit created by an agent (and every Pull Request title) must strictly ad
 
 > **Critical SemVer Rule for Testing:**
 > Both `test` commits and `feat(testing)` commits are configured to increment the **PATCH** version only (`0.2.0` $\rightarrow$ `0.2.1`). Minor version bumps (`0.3.0`) are reserved exclusively for library-level features.
+>
+> **Changelog & Release Exclusion:**
+> Continuous integration (`ci`) commits are strictly excluded from generated changelogs and GitHub Release descriptions to keep user-facing release notes clean and focused on library enhancements.
 
 ---
 

@@ -73,7 +73,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          uvx --from "python-semantic-release>=9.0.0" semantic-release version
+          uvx --from "python-semantic-release>=9.0.0" semantic-release -vv version
           NEW_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
           if [ -n "$NEW_TAG" ] && [ "$NEW_TAG" != "$PREV_TAG" ]; then

@@ -730,6 +730,8 @@ class TestPersistentIndex:
         self, v02_bundle: Path, tmp_path: Path
     ):
         """When Chroma is used, mutating 1 concept embeds ONLY the delta, not the whole bundle."""
+        pytest.importorskip("chromadb")
+        pytest.importorskip("langchain_chroma")
         from langchain_chroma import Chroma
         from langchain_core.embeddings import Embeddings
 

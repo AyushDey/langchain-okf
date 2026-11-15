@@ -53,7 +53,7 @@ Every commit that lands on `main` (and every PR title) must adhere strictly to t
 | `refactor` | None | **NO** | Code restructure without feature or bug changes |
 | `style` | None | **NO** | Formatting, whitespace, imports (no code change) |
 | `chore` | None | **NO** | Maintenance, dependencies, general housekeeping |
-| `ci` | None | **NO** | GitHub Actions workflows and CI scripts |
+| `ci` | None | **NO** | GitHub Actions workflows and CI scripts (excluded from changelog) |
 | `build` | None | **NO** | Packaging, build system, external tool configs |
 
 > **Testing & SemVer Rules:** Both `test` commit prefixes (configured in `[tool.semantic_release.commit_parser_options]` `patch_tags = ["fix", "perf", "test"]`) and `feat(testing)` (handled via `scripts/commit_parser.py`) increment the **PATCH** version only (`0.2.0` → `0.2.1`), keeping minor increments reserved strictly for user-facing library features. See [AGENTS.md](file:///Users/ayushdey/Desktop/langchain-okf/AGENTS.md) for coding agent guidelines.
@@ -270,7 +270,7 @@ flowchart TD
 ## 5. Frequently Asked Questions & Troubleshooting
 
 ### Q: I merged a PR, but no new release was published. Why?
-**A:** Check the commit types in your PR. If all commits since the last release are `docs`, `chore`, `ci`, `test`, `refactor`, or `style`, `python-semantic-release` intentionally does not create a release because there are no user-facing changes or bug fixes. To trigger a release, your PR must include at least one `fix` (patch), `perf` (patch), or `feat` (minor).
+**A:** Check the commit types in your PR. If all commits since the last release are `docs`, `chore`, `ci`, `refactor`, or `style`, `python-semantic-release` intentionally does not create a release because there are no user-facing changes, bug fixes, or test additions. To trigger a release, your PR must include at least one `fix` (patch), `perf` (patch), `test` (patch), `feat(testing)` (patch), or `feat` (minor). Note that `ci` commits are strictly excluded from changelog generation.
 
 ### Q: Why did the release step fail with "Detached HEAD state cannot match any release groups"?
 **A:** `python-semantic-release` matches the active Git branch against `[tool.semantic_release.branches.main]` (`main|master`). If `actions/checkout` checks out a commit SHA instead of the branch name (`head_branch`), Git is in detached HEAD state and has no branch name. Always ensure `ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}` is used.

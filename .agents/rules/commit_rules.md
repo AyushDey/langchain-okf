@@ -14,3 +14,6 @@ Every commit in this repository (and every PR title) must adhere to Conventional
 
 ## Testing & SemVer Rules
 Both `test` commit prefixes (configured in `[tool.semantic_release.commit_parser_options]` `patch_tags = ["fix", "perf", "test"]`) and `feat(testing)` commits are configured to increment the **PATCH** version only (`0.2.0` -> `0.2.1`). Minor version bumps are reserved strictly for library-level features.
+
+## Changelog & Release Notes Exclusion
+Continuous integration (`ci`) commits are excluded from generated changelogs and GitHub Release descriptions (`include_in_changelog = False`).

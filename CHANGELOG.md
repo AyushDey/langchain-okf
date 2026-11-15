@@ -12,13 +12,6 @@
 
 - **scripts**: Allow 'v'-prefixed version headings in release_check.py [skip ci] ([`98c4a2b`](https://github.com/AyushDey/langchain-okf/commit/98c4a2bfe61c5cad05f6554757d7ac653242603b))
 
-### Continuous Integration
-
-- **release**: Add workflow_dispatch option to publish historical v0.1.0 via OIDC [skip ci] ([`18c51d3`](https://github.com/AyushDey/langchain-okf/commit/18c51d32ccb5489d01e94777fa8e38158ff1a906))
-- **release**: Fetch tags and configure checkout branch for workflow run ([`a0bcb84`](https://github.com/AyushDey/langchain-okf/commit/a0bcb84971abf1a7d085fdc6398f35f11b3ef2d1))
-- **release**: Gate release and publish on CI completion and test suite success [skip ci] ([`aec005b`](https://github.com/AyushDey/langchain-okf/commit/aec005b24b4c5052161fb533b55d737a14235d61))
-- **release**: Revert historical release overrides and enforce changelog as release source of truth [skip ci] ([`8829c16`](https://github.com/AyushDey/langchain-okf/commit/8829c16a9899d7a7f1864c544ad1dbf9a783a939))
-
 ### Documentation
 
 - **changelog**: Merge duplicate 0.2.0 sections and unify changelog history [skip ci] ([`4250939`](https://github.com/AyushDey/langchain-okf/commit/4250939852aa1dce6175a9c0ddc85ecb3abc8060))
