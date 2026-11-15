@@ -11,7 +11,7 @@
 - **Graph-Aware Hybrid Retrieval**: Vector similarity search combined with bidirectional markdown cross-link hops (`[[category/concept_id]]`).
 - **Self-Improving Agent Memory**: Autonomous tools for agents to search, read, write new learned concepts, and verify facts with thread-safe atomic writes and full async support.
 - **Trust Tiers & Freshness Lifecycle**: Native filtering by confidence (`human-reviewed` > `machine-confirmed` > `unverified`) and automatic eviction of expired policies via `stale_after` timestamps.
-- **Sub-Second Performance**: Content fingerprinting (`.okf_index_hash`) bypasses re-embedding on cold reloads, and incremental sync updates vector stores in $O(\Delta N)$.
+- **Sub-Second Performance**: Content fingerprinting (`.okf_index_hash`) bypasses re-embedding on cold reloads, and incremental sync updates vector stores in `O(ΔN)`.
 
 ---
 
@@ -268,14 +268,14 @@ Instead of relying on fragile, hardware-dependent micro-benchmarks, `langchain-o
 
 | Operation | Time Complexity | Mechanism | Production Impact |
 | :--- | :---: | :--- | :--- |
-| **Index Cold Reload** | **$O(1)$** | Content fingerprinting via `.okf_index_hash` | Bypasses vector re-embedding on app restarts (~7–10 ms). |
-| **Incremental Vector Sync** | **$O(\Delta N)$** | Content manifest diffing via `.okf_manifest.json` | Adding 1 concept to 5,000 concepts only embeds the 1 modified file. |
-| **Graph Traversal & Hops** | **$O(E)$** | In-memory directed adjacency map + link cache | Traverses cross-links and backlinks in sub-millisecond memory hops. |
-| **Retriever Candidate Filtering** | **$O(K)$** | Over-fetching candidate pool (`fetch_k = max(3k, 20)`) | Prevents result starvation when strict trust/staleness filters are applied. |
-| **Document Ingestion** | **$O(C)$** | Zero-copy `pypdf` streams + SHA-256 `.okf_cache.json` | 100 unchanged PDFs re-run in milliseconds with 0 LLM API calls. |
-| **Memory Footprint** | **$O(V + E)$** | Lightweight dataclasses + `__slots__` parsing | Graph of 10,000 concepts consumes less than 25 MB RAM. |
+| **Index Cold Reload** | `O(1)` | Content fingerprinting via `.okf_index_hash` | Bypasses vector re-embedding on app restarts (~7–10 ms). |
+| **Incremental Vector Sync** | `O(ΔN)` | Content manifest diffing via `.okf_manifest.json` | Adding 1 concept to 5,000 concepts only embeds the 1 modified file. |
+| **Graph Traversal & Hops** | `O(E)` | In-memory directed adjacency map + link cache | Traverses cross-links and backlinks in sub-millisecond memory hops. |
+| **Retriever Candidate Filtering** | `O(K)` | Over-fetching candidate pool (`fetch_k = max(3k, 20)`) | Prevents result starvation when strict trust/staleness filters are applied. |
+| **Document Ingestion** | `O(C)` | Zero-copy `pypdf` streams + SHA-256 `.okf_cache.json` | 100 unchanged PDFs re-run in milliseconds with 0 LLM API calls. |
+| **Memory Footprint** | `O(V + E)` | Lightweight dataclasses + `__slots__` parsing | Graph of 10,000 concepts consumes less than 25 MB RAM. |
 
-*Notation: $N$ = total concepts, $\Delta N$ = modified concepts, $E$ = edges/links, $K$ = top-k results, $C$ = content chunks, $V$ = vertices.*
+**Notation:** `N` = total concepts, `ΔN` = modified concepts, `E` = cross-link edges, `K` = top-k results, `C` = content chunks, `V` = vertices.
 
 ---
 
