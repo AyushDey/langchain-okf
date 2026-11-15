@@ -5,11 +5,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      publish_historical_010:
-        description: 'Build and publish historical v0.1.0 release'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -50,32 +45,41 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ github.event.inputs.publish_historical_010 }}" = "true" ]; then
-            echo "Manual historical release of v0.1.0 requested."
-            git checkout v0.1.0
-            python3 -c '
-          with open("pyproject.toml") as f:
-              c = f.read()
-          c = c.replace("version = \"0.2.0\"", "version = \"0.1.0\"", 1)
-          with open("pyproject.toml", "w") as f:
-              f.write(c)
-          '
-            echo "released=true" >> "$GITHUB_OUTPUT"
-            echo "version=0.1.0" >> "$GITHUB_OUTPUT"
-          else
-            PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-            uvx --from "python-semantic-release>=9.0.0" semantic-release version
-            NEW_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          uvx --from "python-semantic-release>=9.0.0" semantic-release version
+          NEW_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-            if [ -n "$NEW_TAG" ] && [ "$NEW_TAG" != "$PREV_TAG" ]; then
-              echo "New release detected: $NEW_TAG"
-              uvx --from "python-semantic-release>=9.0.0" semantic-release publish
-              echo "released=true" >> "$GITHUB_OUTPUT"
-              echo "version=${NEW_TAG#v}" >> "$GITHUB_OUTPUT"
-            else
-              echo "No new release produced."
-              echo "released=false" >> "$GITHUB_OUTPUT"
-            fi
+          if [ -n "$NEW_TAG" ] && [ "$NEW_TAG" != "$PREV_TAG" ]; then
+            echo "New release detected: $NEW_TAG"
+
+            # Extract release notes directly from CHANGELOG.md as source of truth
+            python3 -c '
+          import re, sys
+          from pathlib import Path
+
+          tag = sys.argv[1].lstrip("v")
+          content = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = rf"^##\s+v?{re.escape(tag)}\b[^\n]*\n(.*?)(?=^##\s|\Z)"
+          match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
+          if not match or not match.group(1).strip():
+              print(f"❌ Error: Release notes for {tag} not found or empty in CHANGELOG.md", file=sys.stderr)
+              sys.exit(1)
+          release_notes = match.group(0).strip() + "\n"
+          Path("RELEASE_NOTES.md").write_text(release_notes, encoding="utf-8")
+          print(f"Extracted {len(release_notes)} bytes of release notes for {tag}")
+          ' "$NEW_TAG"
+
+            # Populate GitHub Release description from CHANGELOG.md notes
+            gh release edit "$NEW_TAG" --notes-file RELEASE_NOTES.md || \
+            gh release create "$NEW_TAG" --title "$NEW_TAG" --notes-file RELEASE_NOTES.md
+
+            # Publish distribution packages to the GitHub release
+            uvx --from "python-semantic-release>=9.0.0" semantic-release publish
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=${NEW_TAG#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new release produced."
+            echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build distribution packages

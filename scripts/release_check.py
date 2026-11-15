@@ -34,11 +34,18 @@ def main() -> None:
     version = match.group(1)
     print(f"Target Version: v{version}\n")
 
-    # 2. Check CHANGELOG.md contains the version
+    # 2. Check CHANGELOG.md contains a non-empty notes section under the target version
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    if f"## {version}" not in changelog and f"## v{version}" not in changelog:
-        print(f"❌ Error: CHANGELOG.md does not contain section for '## {version}' or '## v{version}'")
+    pattern = rf"^##\s+v?{re.escape(version)}\b[^\n]*\n(.*?)(?=^##\s|\Z)"
+    match_notes = re.search(pattern, changelog, re.MULTILINE | re.DOTALL)
+    if not match_notes or not match_notes.group(1).strip():
+        print(
+            f"❌ Error: CHANGELOG.md does not contain a non-empty notes section for '## {version}' or '## v{version}'"
+        )
         sys.exit(1)
+    print(
+        f"✅ Verified CHANGELOG.md notes for v{version} ({len(match_notes.group(1).strip())} chars)\n"
+    )
 
     # 3. Code quality checks
     check("Ruff Linter", ["uv", "run", "ruff", "check", "langchain_okf/", "tests/"])
