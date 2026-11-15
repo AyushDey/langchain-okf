@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.2.0 (2026-11-15)
+
+### Features
+
+- Prune dependencies, add retriever over-fetching, and activate CI/CD workflows
+  ([#1](https://github.com/AyushDey/langchain-okf/pull/1),
+  [`be14087`](https://github.com/AyushDey/langchain-okf/commit/be140877197a61f42a24a94642d694a07ab21206))
+
+
 ## Unreleased
 
 ## 0.2.0 (2026-11-14)
