@@ -38,6 +38,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.3.3
@@ -57,10 +58,13 @@ jobs:
           uv run mypy langchain_okf/
           uv run pytest tests/ -v
 
-      - name: Configure Git Identity
+      - name: Configure Git Identity & Tracking Branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          TARGET_BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          git fetch --tags --force origin
 
       - name: Run Semantic Release
         id: semver

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-okf"
-version = "0.3.0"
+version = "0.2.1"
 description = "LangChain integration for Google's Open Knowledge Format (OKF)"
 readme = "README.md"
 license = "MIT"

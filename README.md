@@ -303,6 +303,8 @@ In multi-agent systems, agents need a shared, auditable knowledge base:
 
 ## Contributing & Testing
 
+For an in-depth guide on conventional commit conventions, version bump rules, and our automated release pipelines, see [CONTRIBUTING.md](file:///Users/ayushdey/Desktop/langchain-okf/CONTRIBUTING.md).
+
 Run tests and linters locally:
 
 ```bash
