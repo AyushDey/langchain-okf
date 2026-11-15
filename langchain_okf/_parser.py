@@ -57,6 +57,9 @@ class OKFConcept:
     frontmatter: dict[str, Any] = field(default_factory=dict)
     body: str = ""
     source_path: str = ""
+    _cached_links: list[str] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     # ── Core fields (§4.1) ────────────────────────────────────────────────────
 
@@ -204,6 +207,8 @@ class OKFConcept:
 
     def cross_links(self) -> list[str]:
         """Extract concept IDs referenced via markdown links in the body."""
+        if self._cached_links is not None:
+            return self._cached_links
         links: list[str] = []
         for _, href in _CROSS_LINK_RE.findall(self.body):
             if href.endswith(".md"):
@@ -213,6 +218,7 @@ class OKFConcept:
                 href = href[1:]
             if href:
                 links.append(href)
+        self._cached_links = links
         return links
 
 

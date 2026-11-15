@@ -33,11 +33,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "langchain-chroma>=1.1.0",
-    "langchain-core>=1.0.0",
-    "langchain-ollama>=1.1.0",
-    "langchain-text-splitters>=1.1.2",
-    "pypdf>=6.21.1",
+    "langchain-core>=0.3.0",
+    "pypdf>=4.0.0",
     "pyyaml>=6.0",
 ]
 
@@ -141,6 +138,8 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.10",
     "types-pyyaml>=6.0.12.20260906",
+    "langchain-chroma>=0.2.0",
+    "langchain-ollama>=0.2.0",
 ]
 
 # ── Tool configuration ──
@@ -172,3 +171,23 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+build_command = "uv build"
+tag_format = "v{version}"
+commit_message = "chore(release): {version} [skip ci]"
+allow_zero_version = true
+major_on_zero = false
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease = false
+
+[tool.semantic_release.changelog]
+default_templates = { changelog_file = "CHANGELOG.md" }
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+allowed_tags = ["feat", "fix", "perf", "build", "chore", "ci", "docs", "style", "refactor", "test"]

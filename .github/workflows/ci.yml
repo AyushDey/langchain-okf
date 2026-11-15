@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --dev --extra chroma
+
+      - name: Run Ruff Lint
+        run: uv run ruff check langchain_okf/ tests/
+
+      - name: Run Ruff Format Check
+        run: uv run ruff format --check langchain_okf/ tests/
+
+      - name: Run MyPy Type Checking
+        run: uv run mypy langchain_okf/
+
+      - name: Run Pytest
+        run: uv run pytest tests/ -v
