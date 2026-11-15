@@ -36,8 +36,8 @@ def main() -> None:
 
     # 2. Check CHANGELOG.md contains the version
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    if f"## {version}" not in changelog:
-        print(f"❌ Error: CHANGELOG.md does not contain section for '## {version}'")
+    if f"## {version}" not in changelog and f"## v{version}" not in changelog:
+        print(f"❌ Error: CHANGELOG.md does not contain section for '## {version}' or '## v{version}'")
         sys.exit(1)
 
     # 3. Code quality checks
