@@ -1,9 +1,12 @@
 name: Release & Publish
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches:
       - main
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -14,8 +17,13 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-latest
     concurrency: release
-    # Do not trigger on release commits produced by the release automation
-    if: "github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):')"
+    # Only run if manual dispatch OR if CI workflow on main passed successfully
+    # and the triggering commit is not an automated release commit
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       !startsWith(github.event.workflow_run.head_commit.message, 'chore(release):'))
     permissions:
       contents: write
       issues: write
@@ -28,12 +36,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
           fetch-depth: 0
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install dependencies
+        run: uv sync --dev --extra chroma
+
+      - name: Run Quality Gate & Unit Tests
+        run: |
+          uv run ruff check langchain_okf/ tests/
+          uv run ruff format --check langchain_okf/ tests/
+          uv run mypy langchain_okf/
+          uv run pytest tests/ -v
 
       - name: Configure Git Identity
         run: |
