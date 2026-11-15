@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-okf"
-version = "0.3.0"
+version = "0.2.1"
 description = "LangChain integration for Google's Open Knowledge Format (OKF)"
 readme = "README.md"
 license = "MIT"
@@ -174,6 +174,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.semantic_release]
+commit_parser = "scripts.commit_parser:ScopedConventionalCommitParser"
 version_toml = ["pyproject.toml:project.version"]
 build_command = "uv build"
 tag_format = "v{version}"
@@ -195,5 +196,5 @@ output_format = "md"
 
 [tool.semantic_release.commit_parser_options]
 minor_tags = ["feat"]
-patch_tags = ["fix", "perf"]
+patch_tags = ["fix", "perf", "test"]
 allowed_tags = ["feat", "fix", "perf", "build", "chore", "ci", "docs", "style", "refactor", "test"]

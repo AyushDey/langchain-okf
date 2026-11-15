@@ -37,23 +37,26 @@ Thank you for contributing to `langchain-okf`! This guide explains our developme
 
 ## 2. Commit Message Conventions (Conventional Commits)
 
-Every commit that lands on `main` (and every PR title) must adhere strictly to the **Conventional Commits 1.0.0** specification.
+Every commit that lands on `main` (and every PR title) must adhere strictly to the **Conventional Commits 1.0.0** specification. Coding agent instructions are defined in **[AGENTS.md](file:///Users/ayushdey/Desktop/langchain-okf/AGENTS.md)**.
 
 ### Release Impact Matrix
 
 | Commit Type | SemVer Impact | Triggers Release? | Example Summary |
 | :--- | :--- | :---: | :--- |
-| `feat` | **MINOR** (`0.2.0` → `0.3.0`) | **YES** | New user-facing feature, tool, or API |
+| `feat` (standard) | **MINOR** (`0.2.0` → `0.3.0`) | **YES** | New user-facing feature, tool, or API |
+| `test` | **PATCH** (`0.2.0` → `0.2.1`) | **YES** | Test additions, fixtures, or test suites |
+| `feat(testing)`* | **PATCH** (`0.2.0` → `0.2.1`) | **YES** | Test framework additions (`langchain-tests`) |
 | `fix` | **PATCH** (`0.2.0` → `0.2.1`) | **YES** | Bug fix or error correction |
 | `perf` | **PATCH** (`0.2.0` → `0.2.1`) | **YES** | Performance optimization |
 | `feat!` / `fix!` / `BREAKING CHANGE:` | **MAJOR** (`1.0.0` → `2.0.0`)* | **YES** | Incompatible breaking API modification |
 | `docs` | None | **NO** | Documentation changes (README, docstrings) |
-| `test` | None | **NO** | Adding or refactoring unit/integration tests |
 | `refactor` | None | **NO** | Code restructure without feature or bug changes |
 | `style` | None | **NO** | Formatting, whitespace, imports (no code change) |
 | `chore` | None | **NO** | Maintenance, dependencies, general housekeeping |
 | `ci` | None | **NO** | GitHub Actions workflows and CI scripts |
 | `build` | None | **NO** | Packaging, build system, external tool configs |
+
+> **Testing & SemVer Rules:** Both `test` commit prefixes (configured in `[tool.semantic_release.commit_parser_options]` `patch_tags = ["fix", "perf", "test"]`) and `feat(testing)` (handled via `scripts/commit_parser.py`) increment the **PATCH** version only (`0.2.0` → `0.2.1`), keeping minor increments reserved strictly for user-facing library features. See [AGENTS.md](file:///Users/ayushdey/Desktop/langchain-okf/AGENTS.md) for coding agent guidelines.
 
 > **Note on `0.x.y` Releases:** Under current repository settings (`major_on_zero = false`), breaking changes on initial alpha/beta development versions (`0.x`) bump the **minor** version instead of jumping to `1.0.0`.
 
