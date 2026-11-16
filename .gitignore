@@ -7,7 +7,7 @@ __pycache__/
 dist/
 build/
 .eggs/
-
+docs/
 # Virtual environments
 .venv/
 venv/
@@ -35,3 +35,11 @@ benchmarks/**/.chroma/
 # Distribution
 *.tar.gz
 *.whl
+
+# Worktrees & Agent Workspaces
+.worktrees/
+.superpowers/
+
+# Worktrees & Agent Workspaces
+.worktrees/
+.superpowers/
